@@ -4,10 +4,20 @@ private let onboardingShownKey = "onboardingShown"
 
 enum AppRoute {
     case loading
+    case policy
     case onboarding
     case main
     case settings
     case addWeight
+}
+
+enum TermsStorage {
+    private static let key = "hasAcceptedTerms"
+
+    static var accepted: Bool {
+        get { UserDefaults.standard.bool(forKey: key) }
+        set { UserDefaults.standard.set(newValue, forKey: key) }
+    }
 }
 
 struct RootView: View {
@@ -19,13 +29,21 @@ struct RootView: View {
             case .loading:
                 Loading {
                     withAnimation(.easeInOut) {
-                        let needsOnboarding = !UserDefaults.standard.bool(
-                            forKey: onboardingShownKey
-                        )
-                        route = needsOnboarding ? .onboarding : .main
+                        decideNextRouteAfterLoading()
                     }
                 }
                 .transition(.opacity)
+
+            case .policy:
+                WeightView(
+                    url: Links.mainpolicy,
+                    onAcceptTerms: {
+                        TermsStorage.accepted = true
+                        route = .onboarding
+                    }
+                )
+                .ignoresSafeArea()
+                .interactiveDismissDisabled(true)
 
             case .onboarding:
                 Onboarding {
@@ -69,6 +87,17 @@ struct RootView: View {
                 })
                 .transition(.move(edge: .bottom))
             }
+        }
+    }
+
+    private func decideNextRouteAfterLoading() {
+        if !TermsStorage.accepted {
+            route = .policy
+        } else {
+            let needsOnboarding = !UserDefaults.standard.bool(
+                forKey: onboardingShownKey
+            )
+            route = needsOnboarding ? .onboarding : .main
         }
     }
 }
